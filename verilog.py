@@ -5,6 +5,7 @@
 # 
 #-------------------------------------------------------------------------------
 import ply.lex as lex
+import sys
 
 
 #-------------------------------------------------------------------------------
@@ -40,8 +41,8 @@ tokens = [
     'RPAREN',
     'COMMA',
     'ID',
-    'EQUAL',
     'SCOLON',
+    'COLON',
     ] 
 
 tokens = tokens + list(reserved.values())
@@ -51,8 +52,8 @@ tokens = tokens + list(reserved.values())
 t_LPAREN  = r'\('
 t_RPAREN  = r'\)'
 t_COMMA  = r'\,'
-t_EQUAL  = r'\=\=,'
 t_SCOLON = r'\;'
+t_COLON = r'\:'
 
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z_0-9]*'
@@ -62,7 +63,7 @@ def t_ID(t):
 # Define a rule so we can track line numbers
 def t_newline(t):
     r'\n+'
-    t.lexer.lineno += len(t.value)
+    t.lexer.lineno += t.value.count("\n")
 
 # A string containing ignored characters (spaces and tabs)
 t_ignore  = ' \t'
@@ -75,30 +76,6 @@ def t_error(t):
 # Build the lexer
 lexer = lex.lex()
 
-
-data = '''
-module main(a,b,c)
-    output d;
-    intput a,b,c;
-
-    wire w1;
-    AND(w1,a,b)
-    AND(d,w1,c)
-
-endmodule
-
-'''
-
-# Give the lexer some input
-lexer.input(data)
-
-# Tokenize
-while True:
-    tok = lexer.token()
-    if not tok: 
-        break      # No more input
-    print(tok)
-
 #-------------------------------------------------------------------------------
 #
 #    ____   __    ____  ___  ____  _  _  ___ 
@@ -109,4 +86,90 @@ while True:
 #
 #-------------------------------------------------------------------------------
 import ply.yacc as yacc
+
+
+source_gates = []
+gate_n = 0
  
+
+def p_bdgate(t):
+    ''' program : MODULE ID LPAREN idlist RPAREN COLON output input wires exprlist ENDMODULE '''
+    t[0] = "module " + t[1] + "(" + t[4] + "):\n\n" + t[7] + "\n" + t[8] + "\n" + t[9] + "\n\n" + t[10] + "\n\nendmodule"
+
+def p_idlist(t):
+    '''idlist : ID
+              | ID COMMA idlist '''
+    if len(t) > 2 : 
+        t[0] = t[1] + "," + t[3]
+    else: 
+        t[0] = t[1]
+
+def p_output(t):
+    '''output : OUTPUT idlist SCOLON ''' 
+    t[0] = "\toutput "+t[2] +";"
+
+def p_input(t):
+    '''input : INPUT idlist SCOLON ''' 
+    t[0] = "\tinput "+t[2] +";"
+
+def p_wires(t):
+    '''wires : empty
+             | WIRE idlist SCOLON ''' 
+    t[0] = "\twire "+t[2] +";"
+
+def p_arg(t):
+    '''arg : ID
+             | TRUE
+             | FALSE '''
+    t[0] = t[1]
+
+def p_exprlist(t):
+    '''exprlist : expr
+                | exprlist expr '''
+    if len(t) > 2 : 
+        t[0] = t[1] + "\n" + t[2]
+    else: 
+        t[0] = t[1]
+
+def p_expr(t):
+    '''expr : gate2 LPAREN ID COMMA arg COMMA arg RPAREN SCOLON
+            | NOT LPAREN ID COMMA arg RPAREN SCOLON '''
+    t[0] = "\t"
+    print(t[1] + "  " + source_gates.pop(0))
+    if (t[1]=='NOT'):
+        t[0] += "NOT("+t[3]+","+t[5]+","+");"
+    else:
+        t[0] += t[1]+"("+t[3]+","+t[5]+","+t[7]+");"
+
+def p_gate2(t):
+    '''gate2 : AND
+             | OR
+             | NAND
+             | XOR
+             | NOR '''
+    t[0] = t[1]
+
+def p_empty(t):
+    'empty :'
+    pass
+
+def p_error(t):
+    print("Syntax error at" , t.value, "on line ", lexer.lineno)
+    sys.exit()
+
+parser = yacc.yacc()
+
+gates = ["NOT","AND","OR","NAND","NOR","XOR"]
+
+def parse_verilog(s):
+    lexer.input(s)
+
+    # Tokenize
+    while True:
+        tok = lexer.token()
+        if not tok: 
+            break      # No more input
+        if tok.type in gates:
+            source_gates.append(tok.type)
+    print("source gates : ", source_gates)
+    return parser.parse(s)

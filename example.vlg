@@ -1,0 +1,9 @@
+module main(a,b,c):
+    output d;
+    input a,b,c;
+
+    wire w1;
+    AND(w1,a,b);
+    XOR(d,w1,c);
+
+endmodule

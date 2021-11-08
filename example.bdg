@@ -1,0 +1,8 @@
+GATES;
+
+a12 0.723 AND;
+c20 0.4 AND;
+
+OMATRIX;
+
+a12 0.3 c20;

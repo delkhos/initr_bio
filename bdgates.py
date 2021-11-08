@@ -5,6 +5,7 @@
 # 
 #-------------------------------------------------------------------------------
 import ply.lex as lex
+import sys
 
 
 #-------------------------------------------------------------------------------
@@ -27,36 +28,18 @@ reserved = {
     'NAND' : 'NAND',
     'XOR' : 'XOR',
     'NOR' : 'NOR',
-    'TRUE' : 'TRUE',
-    'FALSE' : 'FALSE',
 }
 
 # List of tokens
 tokens = [
     'NUMBER',
-    'LPAREN',
-    'RPAREN',
-    'LBRACKET',
-    'RBRACKET',
-    'LCBRACKET',
-    'RCBRACKET',
-    'COMMA',
     'ID',
     'SCOLON',
     ] 
 
 tokens = tokens + list(reserved.values())
-print(tokens)
-
 
 # Regular expression rules for simple tokens
-t_LPAREN  = r'\('
-t_RPAREN  = r'\)'
-t_LBRACKET  = r'\['
-t_RBRACKET  = r'\]'
-t_LCBRACKET  = r'\{'
-t_RCBRACKET  = r'\}'
-t_COMMA  = r'\,'
 t_SCOLON  = r'\;'
 
 # A regular expression rule with some action code
@@ -73,7 +56,7 @@ def t_ID(t):
 # Define a rule so we can track line numbers
 def t_newline(t):
     r'\n+'
-    t.lexer.lineno += len(t.value)
+    t.lexer.lineno += t.value.count("\n")
 
 # A string containing ignored characters (spaces and tabs)
 t_ignore  = ' \t'
@@ -87,27 +70,6 @@ def t_error(t):
 lexer = lex.lex()
 
 
-data = '''
-GATES;
-
-a12 0.723 [ a , b ] { a AND b };
-c20 4571.7 [ c , d ] { c OR d };
-
-OMATRIX;
-
-a12 0.3 c20;
-
-'''
-
-# Give the lexer some input
-lexer.input(data)
-
-# Tokenize
-while True:
-    tok = lexer.token()
-    if not tok: 
-        break      # No more input
-    print(tok)
 
 #-------------------------------------------------------------------------------
 #
@@ -120,18 +82,25 @@ while True:
 #-------------------------------------------------------------------------------
 import ply.yacc as yacc
 
+ids = []
+
 gates = {}
+gates["NOT"] = []
+gates["AND"] = []
+gates["OR"] = []
+gates["XOR"] = []
+gates["NOR"] = []
+gates["NAND"] = []
+
 relations = {}
 
 precedence = (
      ('left', 'AND', 'OR', 'NAND', 'NOR', 'XOR'),
-     ('right', 'NOT'),            # Unary minus operator
+     ('right', 'NOT'),
 )
 
-
 def p_bdgate(t):
-    'bdgate : GATES SCOLON defl  OMATRIX SCOLON relationlist'
-    pass
+    'bdgate : GATES SCOLON defl OMATRIX SCOLON relationlist'
 
 def p_defl(t):
     '''defl : def 
@@ -139,26 +108,19 @@ def p_defl(t):
     pass
 
 def p_def(t):
-    'def : ID NUMBER LBRACKET paramlist RBRACKET LCBRACKET expr RCBRACKET SCOLON'
-    pass
+    'def : ID NUMBER gate SCOLON'
+    gates[t[3]].append((t[1], t[2]))
+    relations[t[1]] = {} 
+    ids.append(t[1])
 
-def p_paramlist(t):
-    '''paramlist :  paramlist COMMA ID
-                 |  ID
-                 | empty '''
-    pass
-
-def p_expr(t):
-    '''expr : TRUE
-            | FALSE
-            | LPAREN expr RPAREN
-            | NOT expr
-            | expr AND expr
-            | expr OR expr
-            | expr NAND expr
-            | expr NOR expr
-            | expr XOR expr '''
-    pass
+def p_gate(t):
+    '''gate : NOT
+            | AND
+            | OR
+            | NAND
+            | XOR
+            | NOR '''
+    t[0] = t[1]
 
 def p_relationlist(t):
     '''relationlist :  relationlist relation  
@@ -168,14 +130,30 @@ def p_relationlist(t):
 
 def p_relation(t):
     'relation : ID NUMBER ID SCOLON'
+    if (not (t[1] in ids)) or (not (t[1] in ids)) :
+        print("Error : defining relation for an unlisted gate")
+        sys.exit()
+    else:
+        relations[t[1]][t[3]] = t[2]
 
 def p_empty(t):
     'empty :'
     pass
 
 def p_error(t):
-    print("Syntax error at" , t.value, "on line ", t.lineno)
+    print("Syntax error at" , t.value, "on line ", lexer.lineno)
+    sys.exit()
 
 parser = yacc.yacc()
 
-parser.parse(data)
+def gate_speed_sort(n):
+    _,speed = n
+    return speed
+
+
+gates["NOT"].sort(key = gate_speed_sort)
+gates["AND"].sort(key = gate_speed_sort)
+gates["OR"].sort(key = gate_speed_sort)
+gates["XOR"].sort(key = gate_speed_sort)
+gates["NOR"].sort(key = gate_speed_sort)
+gates["NAND"].sort(key = gate_speed_sort)
