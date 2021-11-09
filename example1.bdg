@@ -7,4 +7,4 @@ x1 0.4 XOR;
 OMATRIX;
 
 a1 0.3 x1;
-a2 0.5 x1
+a2 0.5 x1;
