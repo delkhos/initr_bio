@@ -5,7 +5,6 @@ module main(a,b,c):
     wire w1,w2,w3;
     AND(w1,a,b);
     OR(w2,w1,c);
-    NAND(w3,w2,d);
-    XOR(f,w3,e);
+    XOR(f,w2,d);
 
 endmodule
