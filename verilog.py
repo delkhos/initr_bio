@@ -135,7 +135,6 @@ def p_expr(t):
     '''expr : gate2 LPAREN ID COMMA arg COMMA arg RPAREN SCOLON
             | NOT LPAREN ID COMMA arg RPAREN SCOLON '''
     t[0] = "\t"
-    print(real_gates , "  " + source_gates.pop(0))
     if (t[1]=='NOT'):
         t[0] += real_gates.pop(0)+"("+t[3]+","+t[5]+","+");"
     else:
@@ -239,6 +238,7 @@ def find_real_gates(src_gates,dbgates, dbrelations, tolerance):
         sys.exit()
     else:
         possibilities.sort(key = score_sort)
+        #print("possibilities = :\n",possibilities)
         print("\nSolution = \n",possibilities[0])
         return possibilities[0]
 
