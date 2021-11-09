@@ -1,10 +1,10 @@
 module main(a,b,c):
     output f;
-    input a,b,c,d,e;
+    input a,b;
 
     wire w1,w2,w3;
     AND(w1,a,b);
-    OR(w2,w1,c);
-    XOR(f,w2,d);
+    OR(w2,a,w1);
+    NOT(f,w2);
 
 endmodule

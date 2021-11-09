@@ -1,0 +1,10 @@
+module module(a,b,c):
+
+	output d;
+	input a,b,c;
+	wire w1;
+
+	a2(w1,a,b);
+	x1(d,w1,c);
+
+endmodule
