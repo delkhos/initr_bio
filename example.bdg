@@ -1,7 +1,7 @@
 GATES;
 
 a12 0.723 AND;
-c20 0.4 AND;
+c20 0.4 XOR;
 
 OMATRIX;
 

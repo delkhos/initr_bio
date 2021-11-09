@@ -22,9 +22,6 @@ def main():
         print(f"Unexpected {err=}, {type(err)=} when trying to open gates database file")
 
     parser_bdgates.parse(bdgate)
-    
-    print(gates)
-    print(relations)
 
     try:
         source = open(source_path).read() 
@@ -38,12 +35,10 @@ def main():
 
     try:
         with open(dest_path, "w") as dest:
-            transformed_source = parse_verilog(source)
+            transformed_source = parse_verilog(source, tolerance, gates, relations)
             print(transformed_source, file = dest)
     except BaseException as err:
         print(f"Unexpected {err=}, {type(err)=}")
-
-    #sys.stdout = open(dest_path,'wt')
 
 if __name__ == "__main__":
     main()

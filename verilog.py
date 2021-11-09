@@ -90,7 +90,7 @@ import ply.yacc as yacc
 
 source_gates = []
 gate_n = 0
- 
+real_gates = []
 
 def p_bdgate(t):
     ''' program : MODULE ID LPAREN idlist RPAREN COLON output input wires exprlist ENDMODULE '''
@@ -135,11 +135,11 @@ def p_expr(t):
     '''expr : gate2 LPAREN ID COMMA arg COMMA arg RPAREN SCOLON
             | NOT LPAREN ID COMMA arg RPAREN SCOLON '''
     t[0] = "\t"
-    print(t[1] + "  " + source_gates.pop(0))
+    print(real_gates , "  " + source_gates.pop(0))
     if (t[1]=='NOT'):
-        t[0] += "NOT("+t[3]+","+t[5]+","+");"
+        t[0] += real_gates.pop(0)+"("+t[3]+","+t[5]+","+");"
     else:
-        t[0] += t[1]+"("+t[3]+","+t[5]+","+t[7]+");"
+        t[0] += real_gates.pop(0)+"("+t[3]+","+t[5]+","+t[7]+");"
 
 def p_gate2(t):
     '''gate2 : AND
@@ -161,8 +161,91 @@ parser = yacc.yacc()
 
 gates = ["NOT","AND","OR","NAND","NOR","XOR"]
 
-def parse_verilog(s):
+
+from typing import Dict, Any
+import hashlib
+import json
+import copy
+
+def dict_hash(dictionary: Dict[str, Any]) -> str:
+    """MD5 hash of a dictionary."""
+    dhash = hashlib.md5()
+    # We need to sort arguments so {'a': 1, 'b': 2} is
+    # the same as {'b': 2, 'a': 1}
+    encoded = json.dumps(dictionary, sort_keys=True).encode()
+    dhash.update(encoded)
+    return dhash.hexdigest()
+
+def correct_db(dbgates,dbrelations,gate, tolerance):
+    dbgates_new = {}
+    for x in gates:
+        lst = dbgates[x]
+        lstnew = []
+        for y in lst:
+            gate_name,_ = y
+            if gate_name == gate or ( (gate_name in dbrelations[gate]) and (dbrelations[gate][gate_name] > tolerance)):
+                continue
+            lstnew.append(y)
+        dbgates_new[x] = lstnew
+    return dbgates_new
+
+def score_sort(n):
+    _,score = n
+    return score
+
+def find_real_gates(src_gates,dbgates, dbrelations, tolerance):
+    hsmap = {}
+    possibilities = []
+    max_iter = len(dbgates[src_gates[0]])
+    j = 0
+    found = False
+    while True:
+        if j >= max_iter :
+            break
+        copy_dbgates = copy.deepcopy(dbgates)
+        try_gates = []
+        score = 0.0
+        for id_g,g in enumerate(src_gates):
+            real_gates = copy_dbgates[g]
+            if len(real_gates)==0:
+                break
+            else :
+                for i in range(len(real_gates)):
+                    elected,escore = real_gates[i]
+                    corrected_db = correct_db(copy_dbgates,dbrelations,elected,tolerance)
+                    hashed = dict_hash(corrected_db)
+                    if hashed in hsmap :
+                        continue
+                    else:
+                        if id_g==0:
+                            j+=1
+                        try_gates.append(elected)
+                        score += escore
+                        hsmap[hashed] = True
+                        copy_dbgates = corrected_db
+                        found = True
+                        break
+
+                if found:
+                    found = False
+                else:
+                    break
+
+        if len(try_gates)==len(src_gates):
+            possibilities.append((try_gates,score))
+
+    if(len(possibilities)==0):
+        print("Error : Couldn't find a solution")
+        sys.exit()
+    else:
+        possibilities.sort(key = score_sort)
+        print("\nSolution = \n",possibilities[0])
+        return possibilities[0]
+
+def parse_verilog(s,tolerance,gatesdb,relationsdb):
     lexer.input(s)
+
+    global real_gates
 
     # Tokenize
     while True:
@@ -171,5 +254,15 @@ def parse_verilog(s):
             break      # No more input
         if tok.type in gates:
             source_gates.append(tok.type)
-    print("source gates : ", source_gates)
+
+    print("\nsource gates : \n", source_gates) 
+
+    print("\ndb gates : \n", gatesdb)
+    print("\ndb relations : \n", relationsdb)
+    print("\ntolerance : ", tolerance)
+
+    real_gates, efficiency = find_real_gates(source_gates,gatesdb, relationsdb, tolerance)
+
+    print("\nThe efficiency of the solution is : ", efficiency)
+    
     return parser.parse(s)
