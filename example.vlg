@@ -1,9 +1,11 @@
 module main(a,b,c):
-    output d;
-    input a,b,c;
+    output f;
+    input a,b,c,d,e;
 
-    wire w1;
+    wire w1,w2,w3;
     AND(w1,a,b);
-    XOR(d,w1,c);
+    OR(w2,w1,c);
+    NAND(w3,w2,d);
+    XOR(f,w3,e);
 
 endmodule
